@@ -1,6 +1,5 @@
 package com.example.ankilauncher
 
-import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.webkit.WebResourceRequest

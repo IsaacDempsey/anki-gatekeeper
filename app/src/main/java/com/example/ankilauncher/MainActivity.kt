@@ -1,8 +1,6 @@
 package com.example.ankilauncher
 
 import android.Manifest
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -17,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -44,6 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -72,17 +73,15 @@ sealed class CardScreenState {
 
 class MainActivity : ComponentActivity() {
 
-    private val dpm by lazy { getSystemService(DevicePolicyManager::class.java) }
-    private val adminComponent by lazy { ComponentName(this, AdminReceiver::class.java) }
-
     private val overlayGranted = mutableStateOf(false)
     private val notificationsGranted = mutableStateOf(false)
     private val mediaGranted = mutableStateOf(false)
-    private val isDeviceOwner = mutableStateOf(false)
+    private val accessibilityEnabled = mutableStateOf(false)
     private val deckSelected = mutableStateOf(false)
     private val showSettings = mutableStateOf(false)
     private val deckPickerState = mutableStateOf<DeckPickerState>(DeckPickerState.Loading)
     private val cardScreenState = mutableStateOf<CardScreenState>(CardScreenState.Loading)
+    private val hasAnsweredCard = mutableStateOf(false)
 
     private var decksJob: Job? = null
     private var fetchJob: Job? = null
@@ -122,8 +121,8 @@ class MainActivity : ComponentActivity() {
                         NotificationPermissionPrompt(onRequest = ::requestNotifications)
                     !mediaGranted.value ->
                         MediaPermissionPrompt(onRequest = ::requestMedia)
-                    !isDeviceOwner.value ->
-                        DeviceOwnerPrompt()
+                    !accessibilityEnabled.value ->
+                        AccessibilityPrompt(onOpenSettings = ::openAccessibilitySettings)
                     !deckSelected.value || showSettings.value ->
                         DeckPickerScreen(
                             state = deckPickerState.value,
@@ -179,7 +178,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            onSkip = ::onCardAnswered,
+                            onSkip = ::endSession,
+                            onExit = if (hasAnsweredCard.value) ::endSession else null,
                         )
                 }
             }
@@ -191,32 +191,28 @@ class MainActivity : ComponentActivity() {
         overlayGranted.value = Settings.canDrawOverlays(this)
         notificationsGranted.value = checkNotificationsGranted()
         mediaGranted.value = checkMediaGranted()
-        isDeviceOwner.value = dpm.isDeviceOwnerApp(packageName)
+        accessibilityEnabled.value = checkAccessibilityEnabled()
 
         if (overlayGranted.value && notificationsGranted.value) {
             startForegroundService(Intent(this, ScreenUnlockService::class.java))
         }
 
-        if (isDeviceOwner.value) {
-            dpm.setLockTaskPackages(adminComponent, arrayOf(packageName))
+        val cardState = cardScreenState.value
+        val shouldLock = !hasAnsweredCard.value && (
+            (showSettings.value && deckSelected.value) ||
+            cardState is CardScreenState.ShowingFront ||
+            cardState is CardScreenState.ShowingBack
+        )
+        applyLock(shouldLock)
 
-            val cardState = cardScreenState.value
-            val shouldLock = (showSettings.value && deckSelected.value) ||
-                cardState is CardScreenState.ShowingFront ||
-                cardState is CardScreenState.ShowingBack
-            if (shouldLock) {
-                try { startLockTask() } catch (_: IllegalStateException) { }
+        if (!deckSelected.value || showSettings.value) {
+            if (AnkiRepository.hasPermission(this)) {
+                if (deckPickerState.value !is DeckPickerState.Ready) loadDecks()
+            } else {
+                deckPickerState.value = DeckPickerState.PermissionNeeded
             }
-
-            if (!deckSelected.value || showSettings.value) {
-                if (AnkiRepository.hasPermission(this)) {
-                    if (deckPickerState.value !is DeckPickerState.Ready) loadDecks()
-                } else {
-                    deckPickerState.value = DeckPickerState.PermissionNeeded
-                }
-            } else if (cardScreenState.value is CardScreenState.Loading) {
-                fetchCard()
-            }
+        } else if (cardScreenState.value is CardScreenState.Loading) {
+            fetchCard()
         }
     }
 
@@ -239,12 +235,12 @@ class MainActivity : ComponentActivity() {
             val result = AnkiRepository.fetchDueCard(this@MainActivity, deckId)
             withContext(Dispatchers.Main) {
                 cardScreenState.value = when (result) {
-                    is CardFetchResult.NoDue -> { onCardAnswered(); CardScreenState.Loading }
-                    is CardFetchResult.Error -> { tryStopLockTask(); CardScreenState.Error }
-                    is CardFetchResult.NotInstalled -> { tryStopLockTask(); CardScreenState.AnkiNotInstalled }
-                    is CardFetchResult.PermissionDenied -> { tryStopLockTask(); CardScreenState.PermissionDenied }
+                    is CardFetchResult.NoDue -> { endSession(); CardScreenState.Loading }
+                    is CardFetchResult.Error -> { applyLock(false); CardScreenState.Error }
+                    is CardFetchResult.NotInstalled -> { applyLock(false); CardScreenState.AnkiNotInstalled }
+                    is CardFetchResult.PermissionDenied -> { applyLock(false); CardScreenState.PermissionDenied }
                     is CardFetchResult.Success -> {
-                        try { startLockTask() } catch (_: IllegalStateException) { }
+                        if (!hasAnsweredCard.value) applyLock(true)
                         CardScreenState.ShowingFront(result.card, SystemClock.elapsedRealtime())
                     }
                 }
@@ -252,12 +248,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun tryStopLockTask() {
-        try { stopLockTask() } catch (_: IllegalStateException) { }
+    private fun applyLock(locked: Boolean) {
+        AnkiLauncherAccessibilityService.isLocked = locked
     }
 
     private fun onCardAnswered() {
-        tryStopLockTask()
+        hasAnsweredCard.value = true
+        applyLock(false)
+        cardScreenState.value = CardScreenState.Loading
+        fetchCard()
+    }
+
+    private fun endSession() {
+        applyLock(false)
         finish()
     }
 
@@ -295,6 +298,19 @@ class MainActivity : ComponentActivity() {
         } else {
             requestMediaPermissions.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
         }
+    }
+
+    private fun checkAccessibilityEnabled(): Boolean {
+        val enabled = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        ) ?: return false
+        val component = "$packageName/${packageName}.AnkiLauncherAccessibilityService"
+        return enabled.split(":").any { it.equals(component, ignoreCase = true) }
+    }
+
+    private fun openAccessibilitySettings() {
+        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
     private fun openOverlaySettings() {
@@ -344,6 +360,7 @@ fun DeckPickerScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (state) {
                 is DeckPickerState.Loading ->
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -362,7 +379,10 @@ fun DeckPickerScreen(
                     }
 
                 is DeckPickerState.Ready -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         item {
                             OutlinedButton(
                                 onClick = { onSelect(0L) },
@@ -402,6 +422,7 @@ fun DeckPickerScreen(
                     }
                 }
             }
+            } // Box weight(1f)
         }
     }
 }
@@ -416,6 +437,7 @@ fun AnkiCardScreen(
     onShowAnswer: () -> Unit,
     onAnswer: (Int) -> Unit,
     onSkip: () -> Unit,
+    onExit: (() -> Unit)?,
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -492,8 +514,16 @@ fun AnkiCardScreen(
                         )
                         Button(
                             onClick = onShowAnswer,
-                            modifier = Modifier.padding(vertical = 16.dp),
+                            modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
                         ) { Text("Show Answer") }
+                        if (onExit != null) {
+                            OutlinedButton(
+                                onClick = onExit,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            ) { Text("Exit") }
+                        } else {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                     }
 
                 is CardScreenState.ShowingBack ->
@@ -511,13 +541,21 @@ fun AnkiCardScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 16.dp),
+                                .padding(top = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             EaseButton(Modifier.weight(1f), "Again", Color(0xFFE53935), 1, onAnswer)
                             EaseButton(Modifier.weight(1f), "Hard",  Color(0xFFFF7043), 2, onAnswer)
                             EaseButton(Modifier.weight(1f), "Good",  Color(0xFF43A047), 3, onAnswer)
                             EaseButton(Modifier.weight(1f), "Easy",  Color(0xFF1E88E5), 4, onAnswer)
+                        }
+                        if (onExit != null) {
+                            OutlinedButton(
+                                onClick = onExit,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            ) { Text("Exit") }
+                        } else {
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
             }
@@ -531,8 +569,9 @@ private fun EaseButton(modifier: Modifier, label: String, color: Color, ease: In
         modifier = modifier,
         onClick = { onAnswer(ease) },
         colors = ButtonDefaults.buttonColors(containerColor = color),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
     ) {
-        Text(label)
+        Text(label, softWrap = false)
     }
 }
 
@@ -561,6 +600,18 @@ fun NotificationPermissionPrompt(onRequest: () -> Unit) {
 }
 
 @Composable
+fun AccessibilityPrompt(onOpenSettings: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Enable Accessibility Service") },
+        text = { Text("Anki Launcher needs its accessibility service enabled to keep the card screen in the foreground.\n\nTap Open Settings, find \"Anki Launcher\" in the list, and turn it on.") },
+        confirmButton = {
+            Button(onClick = onOpenSettings) { Text("Open Settings") }
+        },
+    )
+}
+
+@Composable
 fun MediaPermissionPrompt(onRequest: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
@@ -572,21 +623,3 @@ fun MediaPermissionPrompt(onRequest: () -> Unit) {
     )
 }
 
-@Composable
-fun DeviceOwnerPrompt() {
-    AlertDialog(
-        onDismissRequest = {},
-        title = { Text("Enable Device Owner") },
-        text = {
-            Text(
-                "Run the following ADB command, then reopen the app:\n\n" +
-                "adb shell dpm set-device-owner " +
-                "com.example.ankilauncher/.AdminReceiver\n\n" +
-                "To remove later:\n\n" +
-                "adb shell dpm remove-active-admin " +
-                "com.example.ankilauncher/.AdminReceiver"
-            )
-        },
-        confirmButton = {},
-    )
-}
