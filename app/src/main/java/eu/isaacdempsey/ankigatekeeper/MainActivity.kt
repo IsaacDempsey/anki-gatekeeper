@@ -1,4 +1,4 @@
-package eu.isaacdempsey.flashgate
+package eu.isaacdempsey.ankigatekeeper
 
 import android.Manifest
 import android.content.Intent
@@ -50,7 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import eu.isaacdempsey.flashgate.ui.theme.FlashGateTheme
+import eu.isaacdempsey.ankigatekeeper.ui.theme.AnkiGatekeeperTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
         deckSelected.value = hasDeckSelection()
         enableEdgeToEdge()
         setContent {
-            FlashGateTheme {
+            AnkiGatekeeperTheme {
                 when {
                     !overlayGranted.value ->
                         OverlayPermissionPrompt(onOpenSettings = ::openOverlaySettings)
@@ -249,7 +249,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyLock(locked: Boolean) {
-        FlashGateAccessibilityService.isLocked = locked
+        AnkiGatekeeperAccessibilityService.isLocked = locked
     }
 
     private fun onCardAnswered() {
@@ -305,7 +305,7 @@ class MainActivity : ComponentActivity() {
             contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
         ) ?: return false
-        val component = "$packageName/${packageName}.FlashGateAccessibilityService"
+        val component = "$packageName/${packageName}.AnkiGatekeeperAccessibilityService"
         return enabled.split(":").any { it.equals(component, ignoreCase = true) }
     }
 
@@ -581,7 +581,7 @@ fun OverlayPermissionPrompt(onOpenSettings: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Allow Display Over Other Apps") },
-        text = { Text("FlashGate needs this permission to show your review card immediately after unlock.") },
+        text = { Text("AnkiGatekeeper needs this permission to show your review card immediately after unlock.") },
         confirmButton = {
             Button(onClick = onOpenSettings) { Text("Open Settings") }
         },
@@ -593,7 +593,7 @@ fun NotificationPermissionPrompt(onRequest: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Allow Notifications") },
-        text = { Text("FlashGate needs notification permission to keep the background service running.") },
+        text = { Text("AnkiGatekeeper needs notification permission to keep the background service running.") },
         confirmButton = {
             Button(onClick = onRequest) { Text("Allow") }
         },
@@ -605,7 +605,7 @@ fun AccessibilityPrompt(onOpenSettings: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Enable Accessibility Service") },
-        text = { Text("FlashGate needs its accessibility service enabled to keep the card screen in the foreground.\n\nTap Open Settings, find \"FlashGate\" in the list, and turn it on.") },
+        text = { Text("AnkiGatekeeper needs its accessibility service enabled to keep the card screen in the foreground.\n\nTap Open Settings, find \"AnkiGatekeeper\" in the list, and turn it on.") },
         confirmButton = {
             Button(onClick = onOpenSettings) { Text("Open Settings") }
         },
@@ -617,10 +617,9 @@ fun MediaPermissionPrompt(onRequest: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Allow Media Access") },
-        text = { Text("FlashGate needs \"All files access\" to load images and audio from AnkiDroid's media folder.\n\nTap Open Settings and enable \"Allow access to manage all files\".") },
+        text = { Text("AnkiGatekeeper needs \"All files access\" to load images and audio from AnkiDroid's media folder.\n\nTap Open Settings and enable \"Allow access to manage all files\".") },
         confirmButton = {
             Button(onClick = onRequest) { Text("Open Settings") }
         },
     )
 }
-

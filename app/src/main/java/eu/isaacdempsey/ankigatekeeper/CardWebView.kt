@@ -1,4 +1,4 @@
-package eu.isaacdempsey.flashgate
+package eu.isaacdempsey.ankigatekeeper
 
 import android.os.Build
 import android.os.Environment

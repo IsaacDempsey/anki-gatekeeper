@@ -1,4 +1,4 @@
-# FlashGate
+# AnkiGatekeeper
 
 A personal Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone.
 
@@ -6,7 +6,7 @@ A personal Android app that intercepts every phone unlock and requires answering
 
 1. A foreground service (`ScreenUnlockService`) listens for `ACTION_USER_PRESENT` (keyguard dismissed).
 2. When the screen unlocks, the service launches `MainActivity`, which fetches the next due card from AnkiDroid via ContentProvider.
-3. The accessibility service (`FlashGateAccessibilityService`) monitors window changes and brings the app back to the foreground if the user tries to navigate away.
+3. The accessibility service (`AnkiGatekeeperAccessibilityService`) monitors window changes and brings the app back to the foreground if the user tries to navigate away.
 4. You answer the card — Again / Hard / Good / Easy — the rating is submitted to AnkiDroid's scheduler and the lock is released, returning you to whatever was on screen before.
 5. After answering the first card the lock is released for the rest of the session, and an Exit button appears so you can leave at any time.
 6. If no cards are due, the gate is skipped instantly.
@@ -24,7 +24,7 @@ A personal Android app that intercepts every phone unlock and requires answering
    - **Display over other apps** — required to launch over the lock screen
    - **Notifications** — required to keep the background service running
    - **All files access** — required to load card images and audio
-   - **Accessibility service** — required to keep the card screen in the foreground; find FlashGate in Settings → Accessibility and enable it
+   - **Accessibility service** — required to keep the card screen in the foreground; find AnkiGatekeeper in Settings → Accessibility and enable it
    - **Deck selection** — pick which AnkiDroid deck to draw cards from (can be changed later via the gear icon)
 4. Done. Lock the screen and unlock to see your first card.
 
@@ -35,7 +35,7 @@ A personal Android app that intercepts every phone unlock and requires answering
 | `MainActivity.kt` | Setup flow, deck picker, card review UI (Compose) |
 | `AnkiRepository.kt` | AnkiDroid ContentProvider queries: deck list, due card, submit answer |
 | `ScreenUnlockService.kt` | Foreground service; 1×1 invisible overlay window (BAL bypass) + unlock broadcast receiver |
-| `FlashGateAccessibilityService.kt` | Monitors window changes and returns the app to the foreground while a card is due |
+| `AnkiGatekeeperAccessibilityService.kt` | Monitors window changes and returns the app to the foreground while a card is due |
 | `CardWebView.kt` | Renders card HTML via WebView with local media served through `WebViewAssetLoader` |
 
 ### Why the invisible overlay window?
@@ -44,7 +44,7 @@ Android 10+ blocks background `startActivity()` calls unless the calling UID has
 
 ### Why the accessibility service?
 
-The accessibility service listens for `TYPE_WINDOW_STATE_CHANGED` events. If the user tries to navigate away while a card is still due (before answering the first card of the session), the service calls `startActivity` to bring FlashGate back to the foreground. Once the first card is answered, `isLocked` is set to false and the service stops intercepting.
+The accessibility service listens for `TYPE_WINDOW_STATE_CHANGED` events. If the user tries to navigate away while a card is still due (before answering the first card of the session), the service calls `startActivity` to bring AnkiGatekeeper back to the foreground. Once the first card is answered, `isLocked` is set to false and the service stops intercepting.
 
 ## AnkiDroid API
 

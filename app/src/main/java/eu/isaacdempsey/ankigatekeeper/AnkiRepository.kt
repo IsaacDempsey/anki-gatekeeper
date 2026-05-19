@@ -1,4 +1,4 @@
-package eu.isaacdempsey.flashgate
+package eu.isaacdempsey.ankigatekeeper
 
 import android.content.ContentValues
 import android.content.Context
@@ -30,7 +30,7 @@ object AnkiRepository {
     private val DECKS_URI = Uri.parse("content://com.ichi2.anki.flashcards/decks")
     const val ANKI_PERMISSION = "com.ichi2.anki.permission.READ_WRITE_DATABASE"
     private const val ANKI_PACKAGE = "com.ichi2.anki"
-    private const val TAG = "FlashGate"
+    private const val TAG = "AnkiGatekeeper"
 
     @Suppress("DEPRECATION")
     fun isInstalled(context: Context): Boolean {

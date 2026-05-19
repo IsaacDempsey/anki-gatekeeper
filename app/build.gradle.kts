@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "eu.isaacdempsey.flashgate"
+    namespace = "eu.isaacdempsey.ankigatekeeper"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "eu.isaacdempsey.flashgate"
+        applicationId = "eu.isaacdempsey.ankigatekeeper"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

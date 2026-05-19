@@ -1,10 +1,10 @@
-package eu.isaacdempsey.flashgate
+package eu.isaacdempsey.ankigatekeeper
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 
-class FlashGateAccessibilityService : AccessibilityService() {
+class AnkiGatekeeperAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return

@@ -1,4 +1,4 @@
-package eu.isaacdempsey.flashgate.ui.theme
+package eu.isaacdempsey.ankigatekeeper.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
