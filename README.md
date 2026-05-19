@@ -1,4 +1,4 @@
-# Anki-First Launcher
+# FlashGate
 
 A personal Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone.
 

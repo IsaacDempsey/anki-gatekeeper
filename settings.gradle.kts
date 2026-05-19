@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AnkiLauncher"
+rootProject.name = "FlashGate"
 include(":app")

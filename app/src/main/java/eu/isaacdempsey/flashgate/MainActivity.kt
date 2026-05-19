@@ -249,7 +249,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyLock(locked: Boolean) {
-        AnkiLauncherAccessibilityService.isLocked = locked
+        FlashGateAccessibilityService.isLocked = locked
     }
 
     private fun onCardAnswered() {
@@ -305,7 +305,7 @@ class MainActivity : ComponentActivity() {
             contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
         ) ?: return false
-        val component = "$packageName/${packageName}.AnkiLauncherAccessibilityService"
+        val component = "$packageName/${packageName}.FlashGateAccessibilityService"
         return enabled.split(":").any { it.equals(component, ignoreCase = true) }
     }
 
@@ -581,7 +581,7 @@ fun OverlayPermissionPrompt(onOpenSettings: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Allow Display Over Other Apps") },
-        text = { Text("Anki Launcher needs this permission to show your review card immediately after unlock.") },
+        text = { Text("FlashGate needs this permission to show your review card immediately after unlock.") },
         confirmButton = {
             Button(onClick = onOpenSettings) { Text("Open Settings") }
         },
@@ -593,7 +593,7 @@ fun NotificationPermissionPrompt(onRequest: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Allow Notifications") },
-        text = { Text("Anki Launcher needs notification permission to keep the background service running.") },
+        text = { Text("FlashGate needs notification permission to keep the background service running.") },
         confirmButton = {
             Button(onClick = onRequest) { Text("Allow") }
         },
@@ -605,7 +605,7 @@ fun AccessibilityPrompt(onOpenSettings: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Enable Accessibility Service") },
-        text = { Text("Anki Launcher needs its accessibility service enabled to keep the card screen in the foreground.\n\nTap Open Settings, find \"Anki Launcher\" in the list, and turn it on.") },
+        text = { Text("FlashGate needs its accessibility service enabled to keep the card screen in the foreground.\n\nTap Open Settings, find \"FlashGate\" in the list, and turn it on.") },
         confirmButton = {
             Button(onClick = onOpenSettings) { Text("Open Settings") }
         },
@@ -617,7 +617,7 @@ fun MediaPermissionPrompt(onRequest: () -> Unit) {
     AlertDialog(
         onDismissRequest = {},
         title = { Text("Allow Media Access") },
-        text = { Text("Anki Launcher needs \"All files access\" to load images and audio from AnkiDroid's media folder.\n\nTap Open Settings and enable \"Allow access to manage all files\".") },
+        text = { Text("FlashGate needs \"All files access\" to load images and audio from AnkiDroid's media folder.\n\nTap Open Settings and enable \"Allow access to manage all files\".") },
         confirmButton = {
             Button(onClick = onRequest) { Text("Open Settings") }
         },
