@@ -1,4 +1,4 @@
-package com.example.ankilauncher
+package eu.isaacdempsey.flashgate
 
 import android.Manifest
 import android.content.Intent
@@ -50,7 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.example.ankilauncher.ui.theme.AnkiLauncherTheme
+import eu.isaacdempsey.flashgate.ui.theme.FlashGateTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
         deckSelected.value = hasDeckSelection()
         enableEdgeToEdge()
         setContent {
-            AnkiLauncherTheme {
+            FlashGateTheme {
                 when {
                     !overlayGranted.value ->
                         OverlayPermissionPrompt(onOpenSettings = ::openOverlaySettings)
@@ -536,6 +536,7 @@ fun AnkiCardScreen(
                         CardWebView(
                             html = state.card.answer,
                             css = state.card.css,
+                            autoPlay = true,
                             modifier = Modifier.weight(1f).fillMaxWidth(),
                         )
                         Row(

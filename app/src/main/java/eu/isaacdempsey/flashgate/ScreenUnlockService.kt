@@ -1,4 +1,4 @@
-package com.example.ankilauncher
+package eu.isaacdempsey.flashgate
 
 import android.app.Notification
 import android.app.NotificationChannel

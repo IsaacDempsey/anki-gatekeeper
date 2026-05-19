@@ -25,7 +25,7 @@ A personal Android app that intercepts every phone unlock and requires answering
    - **Notifications** — grant the runtime permission
    - **Device Owner** — run the ADB command shown on screen:
      ```
-     adb shell dpm set-device-owner com.example.ankilauncher/.AdminReceiver
+     adb shell dpm set-device-owner eu.isaacdempsey.flashgate/.AdminReceiver
      ```
    - **Deck selection** — pick which AnkiDroid deck to draw cards from (one-time).
 4. Done. Lock the screen and unlock to see your first card.
@@ -33,17 +33,17 @@ A personal Android app that intercepts every phone unlock and requires answering
 ### Removing Device Owner
 
 ```
-adb shell dpm remove-active-admin com.example.ankilauncher/.AdminReceiver
+adb shell dpm remove-active-admin eu.isaacdempsey.flashgate/.AdminReceiver
 ```
 
 ## Architecture
 
-| File | Role |
-|---|---|
-| `MainActivity.kt` | Setup flow, deck picker, card review UI (Compose) |
-| `AnkiRepository.kt` | AnkiDroid ContentProvider queries: deck list, due card, submit answer |
+| File                     | Role                                                                                      |
+|--------------------------|-------------------------------------------------------------------------------------------|
+| `MainActivity.kt`        | Setup flow, deck picker, card review UI (Compose)                                         |
+| `AnkiRepository.kt`      | AnkiDroid ContentProvider queries: deck list, due card, submit answer                     |
 | `ScreenUnlockService.kt` | Foreground service; 1×1 invisible overlay window (BAL bypass) + unlock broadcast receiver |
-| `AdminReceiver.kt` | Minimal `DeviceAdminReceiver` required for Device Owner |
+| `AdminReceiver.kt`       | Minimal `DeviceAdminReceiver` required for Device Owner                                   |
 
 ### Why the invisible overlay window?
 
@@ -62,3 +62,21 @@ Cards are fetched and answered via AnkiDroid's public ContentProvider (`com.ichi
 - Updating `reviewInfo` with `ease` (1–4) and `time_taken` submits the answer to the scheduler
 
 Permission required: `com.ichi2.anki.permission.READ_WRITE_DATABASE`
+
+## Media / Images
+
+Card images and audio are loaded from AnkiDroid's media folder. Due to Android scoped storage restrictions, this folder is only accessible to other apps when AnkiDroid itself has full storage access.
+
+**AnkiDroid installed from the Play Store does not have full storage access** — it stores media in `/storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.media/`, which is private to AnkiDroid and cannot be read by this app.
+
+To make media work, install AnkiDroid from **F-Droid** or via a **direct APK install** (e.g. from the AnkiDroid GitHub releases page). These builds have full storage access and store media at:
+
+```
+/storage/emulated/0/AnkiDroid/collection.media/
+```
+
+which this app can read. See [AnkiDroid: Full Storage Access](https://github.com/ankidroid/Anki-Android/wiki/Full-Storage-Access) for details.
+
+## TODO
+
+- **Full audio reimplementation** — currently, audio is handled by injecting an `autoplay` attribute on the first `<audio>` element in the answer HTML. AnkiDroid's own player uses a native `MediaPlayer` managed outside the WebView: it extracts all `[sound:...]` tags during rendering and plays them sequentially, requests Android audio focus, and optionally replays question audio when the answer is revealed. A proper reimplementation would match this behaviour.

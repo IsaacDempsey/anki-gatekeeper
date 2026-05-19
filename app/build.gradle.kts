@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ankilauncher"
+    namespace = "eu.isaacdempsey.flashgate"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.ankilauncher"
+        applicationId = "eu.isaacdempsey.flashgate"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -42,4 +42,5 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation("androidx.compose.material:material-icons-core")
     implementation("com.github.ankidroid:Anki-Android:api-v1.1.0")
+    implementation("androidx.webkit:webkit:1.12.1")
 }

@@ -1,4 +1,4 @@
-package com.example.ankilauncher.ui.theme
+package eu.isaacdempsey.flashgate.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -23,7 +23,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun AnkiLauncherTheme(
+fun FlashGateTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,

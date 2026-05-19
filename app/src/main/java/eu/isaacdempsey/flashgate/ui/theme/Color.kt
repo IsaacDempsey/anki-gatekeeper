@@ -1,4 +1,4 @@
-package com.example.ankilauncher.ui.theme
+package eu.isaacdempsey.flashgate.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
