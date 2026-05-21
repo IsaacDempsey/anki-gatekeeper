@@ -1,6 +1,6 @@
 # AnkiGatekeeper
 
-A personal Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone.
+A personal Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone. Also integrates with Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to gate distracting websites behind a card review.
 
 ## How it works
 
@@ -10,6 +10,12 @@ A personal Android app that intercepts every phone unlock and requires answering
 4. You answer the card — Again / Hard / Good / Easy — the rating is submitted to AnkiDroid's scheduler and the lock is released, returning you to whatever was on screen before.
 5. After answering the first card the lock is released for the rest of the session, and an Exit button appears so you can leave at any time.
 6. If no cards are due, the gate is skipped instantly.
+
+### LeechBlock integration
+
+`ScreenUnlockService` also runs a minimal HTTP server on `127.0.0.1:8765`. When LeechBlock redirects a blocked site to `http://127.0.0.1:8765`, the server returns a holding page and simultaneously launches the card gate. After answering, the lock is released and Firefox returns to the (now redirected) tab.
+
+To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
 
 ## Requirements
 
@@ -30,13 +36,14 @@ A personal Android app that intercepts every phone unlock and requires answering
 
 ## Architecture
 
-| File | Role |
-|---|---|
-| `MainActivity.kt` | Setup flow, deck picker, card review UI (Compose) |
-| `AnkiRepository.kt` | AnkiDroid ContentProvider queries: deck list, due card, submit answer |
-| `ScreenUnlockService.kt` | Foreground service; 1×1 invisible overlay window (BAL bypass) + unlock broadcast receiver |
-| `AnkiGatekeeperAccessibilityService.kt` | Monitors window changes and returns the app to the foreground while a card is due |
-| `CardWebView.kt` | Renders card HTML via WebView with local media served through `WebViewAssetLoader` |
+| File                                    | Role                                                                                                               |
+|-----------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| `MainActivity.kt`                       | Setup flow, deck picker, card review UI (Compose)                                                                  |
+| `AnkiRepository.kt`                     | AnkiDroid ContentProvider queries: deck list, due card, submit answer                                              |
+| `ScreenUnlockService.kt`                | Foreground service; 1×1 invisible overlay window (BAL bypass) + unlock broadcast receiver + LeechBlock HTTP server |
+| `GatekeeperServer.kt`                   | Minimal raw-socket HTTP server on `127.0.0.1:8765`; serves the holding page and fires the card gate intent         |
+| `AnkiGatekeeperAccessibilityService.kt` | Monitors window changes and returns the app to the foreground                                                      |
+| `CardWebView.kt`                        | Renders card HTML via WebView with local media served through `WebViewAssetLoader`                                 |
 
 ### Why the invisible overlay window?
 
@@ -68,7 +75,7 @@ To make media work, install AnkiDroid from **F-Droid** or via a **direct APK ins
 /storage/emulated/0/AnkiDroid/collection.media/
 ```
 
-which this app can read. See [AnkiDroid: Full Storage Access](https://github.com/ankidroid/Anki-Android/wiki/Full-Storage-Access) for details.
+which this AnkiGatekeeper can read. See [AnkiDroid: Full Storage Access](https://github.com/ankidroid/Anki-Android/wiki/Full-Storage-Access) for details.
 
 ## TODO
 

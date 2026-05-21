@@ -19,6 +19,7 @@ class ScreenUnlockService : Service() {
 
     private val windowManager by lazy { getSystemService(WindowManager::class.java) }
     private var overlayView: View? = null
+    private var gatekeeperServer: GatekeeperServer? = null
 
     private val unlockReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -26,6 +27,7 @@ class ScreenUnlockService : Service() {
                 startActivity(
                     Intent(context, MainActivity::class.java).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra(MainActivity.EXTRA_FROM_UNLOCK, true)
                     }
                 )
             }
@@ -37,12 +39,14 @@ class ScreenUnlockService : Service() {
         startForegroundWithNotification()
         addOverlayWindow()
         registerReceiver(unlockReceiver, IntentFilter(Intent.ACTION_USER_PRESENT))
+        gatekeeperServer = GatekeeperServer(this).also { it.start() }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(unlockReceiver)
         overlayView?.let { windowManager.removeView(it) }
+        gatekeeperServer?.stop()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

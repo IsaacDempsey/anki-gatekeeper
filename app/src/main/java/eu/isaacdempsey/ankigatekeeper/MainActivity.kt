@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
     private val accessibilityEnabled = mutableStateOf(false)
     private val deckSelected = mutableStateOf(false)
     private val showSettings = mutableStateOf(false)
+    private val noDueMode = mutableStateOf(false)
     private val deckPickerState = mutableStateOf<DeckPickerState>(DeckPickerState.Loading)
     private val cardScreenState = mutableStateOf<CardScreenState>(CardScreenState.Loading)
     private val hasAnsweredCard = mutableStateOf(false)
@@ -123,23 +124,28 @@ class MainActivity : ComponentActivity() {
                         MediaPermissionPrompt(onRequest = ::requestMedia)
                     !accessibilityEnabled.value ->
                         AccessibilityPrompt(onOpenSettings = ::openAccessibilitySettings)
-                    !deckSelected.value || showSettings.value ->
+                    !deckSelected.value || showSettings.value || noDueMode.value ->
                         DeckPickerScreen(
                             state = deckPickerState.value,
                             onRequestPermission = {
                                 requestAnkiPermission.launch(AnkiRepository.ANKI_PERMISSION)
                             },
                             onRetry = ::loadDecks,
-                            onCancel = if (showSettings.value) {
-                                {
-                                    showSettings.value = false
-                                    if (cardScreenState.value is CardScreenState.Loading) fetchCard()
+                            onCancel = when {
+                                showSettings.value -> {
+                                    {
+                                        showSettings.value = false
+                                        if (cardScreenState.value is CardScreenState.Loading) fetchCard()
+                                    }
                                 }
-                            } else null,
+                                noDueMode.value -> { { endSession() } }
+                                else -> null
+                            },
                             onSelect = { deckId ->
                                 saveDeckSelection(deckId)
                                 deckSelected.value = true
                                 showSettings.value = false
+                                noDueMode.value = false
                                 cardScreenState.value = CardScreenState.Loading
                                 fetchCard()
                             },
@@ -205,7 +211,7 @@ class MainActivity : ComponentActivity() {
         )
         applyLock(shouldLock)
 
-        if (!deckSelected.value || showSettings.value) {
+        if (!deckSelected.value || showSettings.value || noDueMode.value) {
             if (AnkiRepository.hasPermission(this)) {
                 if (deckPickerState.value !is DeckPickerState.Ready) loadDecks()
             } else {
@@ -235,7 +241,12 @@ class MainActivity : ComponentActivity() {
             val result = AnkiRepository.fetchDueCard(this@MainActivity, deckId)
             withContext(Dispatchers.Main) {
                 cardScreenState.value = when (result) {
-                    is CardFetchResult.NoDue -> { endSession(); CardScreenState.Loading }
+                    is CardFetchResult.NoDue -> {
+                        applyLock(false)
+                        noDueMode.value = true
+                        loadDecks()
+                        CardScreenState.Loading
+                    }
                     is CardFetchResult.Error -> { applyLock(false); CardScreenState.Error }
                     is CardFetchResult.NotInstalled -> { applyLock(false); CardScreenState.AnkiNotInstalled }
                     is CardFetchResult.PermissionDenied -> { applyLock(false); CardScreenState.PermissionDenied }
@@ -320,6 +331,23 @@ class MainActivity : ComponentActivity() {
                 Uri.fromParts("package", packageName, null),
             )
         )
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val isNewSession = intent.getBooleanExtra(EXTRA_FROM_UNLOCK, false) ||
+            intent.getBooleanExtra(EXTRA_FROM_WEB, false)
+        if (isNewSession) {
+            hasAnsweredCard.value = false
+            noDueMode.value = false
+            showSettings.value = false
+            cardScreenState.value = CardScreenState.Loading
+        }
+    }
+
+    companion object {
+        const val EXTRA_FROM_UNLOCK = "from_unlock"
+        const val EXTRA_FROM_WEB = "from_web"
     }
 }
 
