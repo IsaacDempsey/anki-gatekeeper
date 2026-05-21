@@ -40,6 +40,7 @@ object AnkiRepository {
         } catch (_: PackageManager.NameNotFoundException) {
             false
         }
+
         Log.d(TAG, "isInstalled=$installed")
         return installed
     }
@@ -54,6 +55,7 @@ object AnkiRepository {
     fun fetchDecks(context: Context): List<DeckInfo> {
         Log.d(TAG, "fetchDecks: start")
         if (!hasPermission(context)) return emptyList()
+
         return try {
             val cursor = context.contentResolver.query(DECKS_URI, null, null, null, null)
             Log.d(TAG, "fetchDecks: cursor count=${cursor?.count}")
@@ -92,6 +94,7 @@ object AnkiRepository {
                 val deckValues = ContentValues().apply {
                     put(FlashCardsContract.Deck.DECK_ID, deckId)
                 }
+
                 context.contentResolver.update(FlashCardsContract.Deck.CONTENT_SELECTED_URI, deckValues, null, null)
                 Log.d(TAG, "fetchDueCard: selected deck $deckId")
             }
@@ -99,16 +102,19 @@ object AnkiRepository {
             val reviewCursor = context.contentResolver.query(
                 FlashCardsContract.ReviewInfo.CONTENT_URI, null, "limit=?", arrayOf("1"), null
             )
+
             Log.d(TAG, "fetchDueCard: reviewCursor count=${reviewCursor?.count}")
             if (reviewCursor == null) {
                 Log.w(TAG, "fetchDueCard: null reviewCursor")
                 return CardFetchResult.Error
             }
+
             reviewCursor.use { rc ->
                 if (!rc.moveToFirst()) {
                     Log.d(TAG, "fetchDueCard: empty → NoDue")
                     return CardFetchResult.NoDue
                 }
+
                 val noteId  = rc.getLong(rc.getColumnIndexOrThrow(FlashCardsContract.ReviewInfo.NOTE_ID))
                 val cardOrd = rc.getInt(rc.getColumnIndexOrThrow(FlashCardsContract.ReviewInfo.CARD_ORD))
                 Log.d(TAG, "fetchDueCard: noteId=$noteId cardOrd=$cardOrd")
@@ -120,17 +126,20 @@ object AnkiRepository {
                     ),
                     cardOrd.toString()
                 )
+
                 val cardCursor = context.contentResolver.query(cardUri, null, null, null, null)
                 Log.d(TAG, "fetchDueCard: cardCursor count=${cardCursor?.count}")
                 if (cardCursor == null) {
                     Log.w(TAG, "fetchDueCard: null cardCursor")
                     return CardFetchResult.Error
                 }
+
                 cardCursor.use { cc ->
                     if (!cc.moveToFirst()) {
                         Log.w(TAG, "fetchDueCard: cardCursor empty")
                         return CardFetchResult.Error
                     }
+
                     val question = cc.getString(cc.getColumnIndexOrThrow("question")) ?: ""
                     val answer   = cc.getString(cc.getColumnIndexOrThrow("answer")) ?: ""
                     Log.d(TAG, "fetchDueCard: question=${question.take(80)}")
@@ -154,8 +163,11 @@ object AnkiRepository {
             )?.use { c ->
                 if (c.moveToFirst()) c.getLong(c.getColumnIndexOrThrow(FlashCardsContract.Note.MID)) else null
             }
+
             if (mid == null) return ""
+
             val modelUri = Uri.withAppendedPath(FlashCardsContract.Model.CONTENT_URI, mid.toString())
+
             context.contentResolver.query(
                 modelUri, arrayOf(FlashCardsContract.Model.CSS), null, null, null,
             )?.use { c ->
@@ -175,6 +187,7 @@ object AnkiRepository {
             put(FlashCardsContract.ReviewInfo.EASE, ease)
             put(FlashCardsContract.ReviewInfo.TIME_TAKEN, timeTakenMs)
         }
+
         try {
             val rows = context.contentResolver.update(FlashCardsContract.ReviewInfo.CONTENT_URI, values, null, null)
             Log.d(TAG, "submitAnswer: updated $rows row(s)")
@@ -182,5 +195,4 @@ object AnkiRepository {
             Log.e(TAG, "submitAnswer: exception", e)
         }
     }
-
 }

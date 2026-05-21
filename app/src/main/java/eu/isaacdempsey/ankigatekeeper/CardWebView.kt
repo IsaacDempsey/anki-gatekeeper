@@ -80,6 +80,7 @@ fun CardWebView(html: String, css: String, autoPlay: Boolean = false, modifier: 
                     @Suppress("DEPRECATION")
                     settings.forceDark = WebSettings.FORCE_DARK_AUTO
                 }
+
                 settings.mediaPlaybackRequiresUserGesture = false
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true

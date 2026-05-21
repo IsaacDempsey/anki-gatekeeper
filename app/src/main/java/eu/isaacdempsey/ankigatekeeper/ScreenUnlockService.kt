@@ -67,14 +67,17 @@ class ScreenUnlockService : Service() {
 
     private fun startForegroundWithNotification() {
         val nm = getSystemService(NotificationManager::class.java)
+
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "AnkiGatekeeper", NotificationManager.IMPORTANCE_MIN)
                 .apply { setShowBadge(false) }
         )
+
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("AnkiGatekeeper active")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .build()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
