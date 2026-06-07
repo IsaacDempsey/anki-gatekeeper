@@ -51,8 +51,8 @@ class GatekeeperServer(private val context: Context) {
                                 "/icon.png", "/favicon.ico" -> serveAsset(client.getOutputStream(), "icon.png", "image/png")
                                 else -> {
                                     client.getOutputStream().apply {
-                                        write(httpHeader("text/html; charset=utf-8", RESPONSE_HTML_BYTES.size).toByteArray())
-                                        write(RESPONSE_HTML_BYTES)
+                                        write(httpHeader("text/html; charset=utf-8", responseHtmlBytes.size).toByteArray())
+                                        write(responseHtmlBytes)
                                         flush()
                                     }
                                     context.startActivity(
@@ -97,52 +97,11 @@ class GatekeeperServer(private val context: Context) {
         executor.shutdown()
     }
 
+    private val responseHtmlBytes: ByteArray by lazy {
+        context.assets.open("blocked.html").use { it.readBytes() }
+    }
+
     companion object {
         const val PORT = 8765
-
-        private val RESPONSE_HTML = """
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>Anki Gatekeeper</title>
-              <link rel="icon" href="/icon.png" type="image/png">
-              <style>
-                * { box-sizing: border-box; margin: 0; padding: 0; }
-                body {
-                  background: #ede4cf;
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  align-items: center;
-                  min-height: 100vh;
-                  padding: 2rem;
-                  font-family: Georgia, 'Times New Roman', serif;
-                }
-                img {
-                  max-width: min(420px, 100%);
-                  height: auto;
-                  display: block;
-                }
-                blockquote {
-                  max-width: 420px;
-                  margin-top: 1.5rem;
-                  font-size: 1.1rem;
-                  line-height: 1.6;
-                  color: #3b2f1e;
-                  text-align: center;
-                  font-style: italic;
-                }
-              </style>
-            </head>
-            <body>
-              <img src="/watchman.jpg" alt="A night watchman">
-              <blockquote>&#8216;Tis my job to ask question after nightfall. There&#8217;s talk of strange folk abroad. Can&#8217;t be too careful.</blockquote>
-            </body>
-            </html>
-        """.trimIndent()
-
-        private val RESPONSE_HTML_BYTES = RESPONSE_HTML.toByteArray(Charsets.UTF_8)
     }
 }

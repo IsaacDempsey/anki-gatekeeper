@@ -75,30 +75,27 @@ object AnkiRepository {
         }
     }
 
-    // Must be called on a background thread.
-    // Pass deckId = 0L to fetch from all decks (no filter).
-    // Step 1: if a specific deck is selected, permanently select it via DECK_SELECTED so the
-    // reviewInfo queue is scoped to that deck. Querying with deckID=? would only temporarily
-    // select the deck and restore the original afterward — leaving the wrong deck selected when
-    // answerCard later calls getQueuedCards, causing FSRS state mismatches ("card was modified").
-    // Step 2: query reviewInfo (limit=1, no deckID) to get the top card from the selected deck.
-    // This also registers the card in AnkiDroid's internal review queue, which submitAnswer needs.
-    // Step 3: query notes/{noteId}/cards/{cardOrd} to get the rendered question/answer.
+    // Must be called on a background thread. deckId = 0L fetches from all decks.
     fun fetchDueCard(context: Context, deckId: Long = 0L): CardFetchResult {
         Log.d(TAG, "fetchDueCard: deckId=$deckId")
         if (!isInstalled(context)) return CardFetchResult.NotInstalled
         if (!hasPermission(context)) return CardFetchResult.PermissionDenied
 
         return try {
+            // Permanently select the deck via DECK_SELECTED_URI rather than using the deckID=?
+            // query param. deckID=? temporarily selects then restores the original deck, leaving
+            // the wrong deck active when answerCard calls getQueuedCards — causing FSRS
+            // "card was modified" state mismatches.
             if (deckId != 0L) {
                 val deckValues = ContentValues().apply {
                     put(FlashCardsContract.Deck.DECK_ID, deckId)
                 }
-
                 context.contentResolver.update(FlashCardsContract.Deck.CONTENT_SELECTED_URI, deckValues, null, null)
                 Log.d(TAG, "fetchDueCard: selected deck $deckId")
             }
 
+            // Querying reviewInfo also registers the card in AnkiDroid's internal queue,
+            // which submitAnswer requires.
             val reviewCursor = context.contentResolver.query(
                 FlashCardsContract.ReviewInfo.CONTENT_URI, null, "limit=?", arrayOf("1"), null
             )
