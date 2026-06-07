@@ -20,7 +20,7 @@ class GatekeeperServer(private val context: Context) {
         try {
             val socket = ServerSocket().apply {
                 reuseAddress = true
-                bind(InetSocketAddress(InetAddress.getLoopbackAddress(), PORT), 1)
+                bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT), 1)
             }.also { serverSocket = it }
 
             executor.execute {
@@ -68,6 +68,9 @@ class GatekeeperServer(private val context: Context) {
                             }
                         }
                     } catch (_: IOException) { }
+                    catch (e: Throwable) {
+                        if (!socket.isClosed) throw e
+                    }
                 }
             }
         } catch (_: IOException) { }
