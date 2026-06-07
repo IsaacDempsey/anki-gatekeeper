@@ -1,6 +1,6 @@
 # AnkiGatekeeper
 
-A personal Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone. Also integrates with Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to gate distracting websites behind a card review.
+A Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone. Also integrates with Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to gate distracting websites behind a card review.
 
 ## How it works
 
@@ -13,7 +13,7 @@ A personal Android app that intercepts every phone unlock and requires answering
 
 ### LeechBlock integration
 
-`ScreenUnlockService` also runs a minimal HTTP server on `127.0.0.1:8765`. When LeechBlock redirects a blocked site to `http://127.0.0.1:8765`, the server returns a holding page and simultaneously launches the card gate. After answering, the lock is released and Firefox returns to the (now redirected) tab.
+`ScreenUnlockService` also runs a minimal HTTP server on `127.0.0.1:8765`. When LeechBlock redirects a blocked site to `http://127.0.0.1:8765`, the server returns a holding page — a night watchman illustration with a suitably stern message — and simultaneously launches the card gate. After answering, the lock is released and Firefox returns to the (now redirected) tab.
 
 To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
 
@@ -38,12 +38,13 @@ To set it up, open LeechBlock's options for a block set and enter `http://127.0.
 
 | File                                    | Role                                                                                                               |
 |-----------------------------------------|--------------------------------------------------------------------------------------------------------------------|
-| `MainActivity.kt`                       | Setup flow, deck picker, card review UI (Compose)                                                                  |
+| `MainActivity.kt`                       | Setup flow, deck picker, card review UI (Compose); delegates state and logic to `MainViewModel`                    |
+| `MainViewModel.kt`                      | Business logic and durable UI state; survives configuration changes and process death via `SavedStateHandle`        |
 | `AnkiRepository.kt`                     | AnkiDroid ContentProvider queries: deck list, due card, submit answer                                              |
 | `ScreenUnlockService.kt`                | Foreground service; 1×1 invisible overlay window (BAL bypass) + unlock broadcast receiver + LeechBlock HTTP server |
 | `GatekeeperServer.kt`                   | Minimal raw-socket HTTP server on `127.0.0.1:8765`; serves the holding page and fires the card gate intent         |
 | `AnkiGatekeeperAccessibilityService.kt` | Monitors window changes and returns the app to the foreground                                                      |
-| `CardWebView.kt`                        | Renders card HTML via WebView with local media served through `WebViewAssetLoader`                                 |
+| `CardWebView.kt`                        | Renders card HTML via WebView with local media served through `WebViewAssetLoader`; supports dark mode              |
 
 ### Why the invisible overlay window?
 
