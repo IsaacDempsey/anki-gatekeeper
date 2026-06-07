@@ -27,6 +27,6 @@ class AnkiGatekeeperAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     companion object {
-        var isLocked: Boolean = false
+        @Volatile var isLocked: Boolean = false
     }
 }

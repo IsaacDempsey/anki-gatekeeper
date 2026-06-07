@@ -1,10 +1,11 @@
 package eu.isaacdempsey.ankigatekeeper
 
+import android.content.res.Configuration
+import android.graphics.Color
 import android.os.Build
 import android.os.Environment
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
@@ -34,15 +35,19 @@ private fun preprocessHtml(html: String, autoPlayFirst: Boolean = false): String
     }
 }
 
-private fun wrapHtml(body: String, css: String): String = """<!DOCTYPE html>
+private fun wrapHtml(body: String, css: String, isDarkMode: Boolean): String {
+    val bodyClass = if (isDarkMode) "card night_mode" else "card"
+    return """<!DOCTYPE html>
 <html><head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <style>
 $css
 img{max-width:100%;height:auto;display:block;margin:8px auto}
 audio,video{max-width:100%;display:block;margin:8px auto}
+body.night_mode{background-color:#1a1a1a;color:#e8e8e8}
 </style>
-</head><body class="card">$body</body></html>"""
+</head><body class="$bodyClass">$body</body></html>"""
+}
 
 private fun guessMime(name: String): String = when (name.substringAfterLast('.').lowercase()) {
     "jpg", "jpeg" -> "image/jpeg"
@@ -76,10 +81,10 @@ fun CardWebView(html: String, css: String, autoPlay: Boolean = false, modifier: 
             WebView(context).apply {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     settings.isAlgorithmicDarkeningAllowed = true
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    @Suppress("DEPRECATION")
-                    settings.forceDark = WebSettings.FORCE_DARK_AUTO
                 }
+
+                // Transparent background prevents a white flash before the page loads.
+                setBackgroundColor(Color.TRANSPARENT)
 
                 settings.mediaPlaybackRequiresUserGesture = false
                 webViewClient = object : WebViewClient() {
@@ -90,9 +95,11 @@ fun CardWebView(html: String, css: String, autoPlay: Boolean = false, modifier: 
             }
         },
         update = { webView ->
+            val isDarkMode = (webView.context.resources.configuration.uiMode and
+                Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
             webView.loadDataWithBaseURL(
                 "https://appassets.androidplatform.net/media/",
-                wrapHtml(preprocessHtml(html, autoPlay), css),
+                wrapHtml(preprocessHtml(html, autoPlay), css, isDarkMode),
                 "text/html",
                 "UTF-8",
                 null,

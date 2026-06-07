@@ -6,12 +6,12 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -43,18 +42,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
 import eu.isaacdempsey.ankigatekeeper.ui.theme.AnkiGatekeeperTheme
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 sealed class DeckPickerState {
     object Loading : DeckPickerState()
@@ -73,48 +67,36 @@ sealed class CardScreenState {
 
 class MainActivity : ComponentActivity() {
 
-    private val overlayGranted = mutableStateOf(false)
-    private val notificationsGranted = mutableStateOf(false)
-    private val mediaGranted = mutableStateOf(false)
-    private val accessibilityEnabled = mutableStateOf(false)
-    private val deckSelected = mutableStateOf(false)
-    private val showSettings = mutableStateOf(false)
-    private val noDueMode = mutableStateOf(false)
-    private val deckPickerState = mutableStateOf<DeckPickerState>(DeckPickerState.Loading)
-    private val cardScreenState = mutableStateOf<CardScreenState>(CardScreenState.Loading)
-    private val hasAnsweredCard = mutableStateOf(false)
+    private val vm: MainViewModel by viewModels()
 
-    private var decksJob: Job? = null
-    private var fetchJob: Job? = null
+    // Permission states are Activity-bound: re-checked live in onResume
+    private val overlayGranted      = mutableStateOf(false)
+    private val notificationsGranted = mutableStateOf(false)
+    private val mediaGranted        = mutableStateOf(false)
+    private val accessibilityEnabled = mutableStateOf(false)
 
     private val requestNotificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        notificationsGranted.value = granted
-    }
+    ) { granted -> notificationsGranted.value = granted }
 
     private val requestMediaPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        mediaGranted.value = results.values.any { it }
-    }
+    ) { results -> mediaGranted.value = results.values.any { it } }
 
     private val requestAnkiPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            if (!deckSelected.value || showSettings.value) loadDecks() else fetchCard()
-        } else {
-            onCardAnswered()
-        }
+        if (granted) vm.onAnkiPermissionGranted() else vm.onAnkiPermissionDenied()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        deckSelected.value = hasDeckSelection()
         enableEdgeToEdge()
         setContent {
             AnkiGatekeeperTheme {
+                LaunchedEffect(Unit) {
+                    vm.events.collect { finish() }
+                }
                 when {
                     !overlayGranted.value ->
                         OverlayPermissionPrompt(onOpenSettings = ::openOverlaySettings)
@@ -124,68 +106,32 @@ class MainActivity : ComponentActivity() {
                         MediaPermissionPrompt(onRequest = ::requestMedia)
                     !accessibilityEnabled.value ->
                         AccessibilityPrompt(onOpenSettings = ::openAccessibilitySettings)
-                    !deckSelected.value || showSettings.value || noDueMode.value ->
+                    !vm.deckSelected.value || vm.showSettings.value || vm.noDueMode.value ->
                         DeckPickerScreen(
-                            state = deckPickerState.value,
+                            state = vm.deckPickerState.value,
                             onRequestPermission = {
                                 requestAnkiPermission.launch(AnkiRepository.ANKI_PERMISSION)
                             },
-                            onRetry = ::loadDecks,
+                            onRetry = vm::loadDecks,
                             onCancel = when {
-                                showSettings.value -> {
-                                    {
-                                        showSettings.value = false
-                                        if (cardScreenState.value is CardScreenState.Loading) fetchCard()
-                                    }
-                                }
-                                noDueMode.value -> { { endSession() } }
-                                else -> null
+                                vm.showSettings.value -> vm::closeSettings
+                                vm.noDueMode.value   -> vm::endSession
+                                else                 -> null
                             },
-                            onSelect = { deckId ->
-                                saveDeckSelection(deckId)
-                                deckSelected.value = true
-                                showSettings.value = false
-                                noDueMode.value = false
-                                cardScreenState.value = CardScreenState.Loading
-                                fetchCard()
-                            },
+                            onSelect = vm::onDeckSelected,
                         )
                     else ->
                         AnkiCardScreen(
-                            state = cardScreenState.value,
+                            state = vm.cardScreenState.value,
                             onRequestPermission = {
                                 requestAnkiPermission.launch(AnkiRepository.ANKI_PERMISSION)
                             },
-                            onRetry = ::fetchCard,
-                            onSettings = {
-                                showSettings.value = true
-                                cardScreenState.value = CardScreenState.Loading
-                                loadDecks()
-                            },
-                            onShowAnswer = {
-                                val s = cardScreenState.value
-                                if (s is CardScreenState.ShowingFront) {
-                                    cardScreenState.value = CardScreenState.ShowingBack(s.card, s.startTime)
-                                }
-                            },
-                            onAnswer = { ease ->
-                                val s = cardScreenState.value
-                                if (s is CardScreenState.ShowingBack) {
-                                    val elapsed = SystemClock.elapsedRealtime() - s.startTime
-                                    lifecycleScope.launch(Dispatchers.IO) {
-                                        AnkiRepository.submitAnswer(
-                                            this@MainActivity,
-                                            s.card.noteId,
-                                            s.card.cardOrd,
-                                            ease,
-                                            elapsed,
-                                        )
-                                        withContext(Dispatchers.Main) { onCardAnswered() }
-                                    }
-                                }
-                            },
-                            onSkip = ::endSession,
-                            onExit = if (hasAnsweredCard.value) ::endSession else null,
+                            onRetry = vm::fetchCard,
+                            onSettings = vm::openSettings,
+                            onShowAnswer = vm::onShowAnswer,
+                            onAnswer = vm::onAnswer,
+                            onSkip = vm::endSession,
+                            onExit = if (vm.hasAnsweredCard.value) vm::endSession else null,
                         )
                 }
             }
@@ -194,105 +140,52 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        overlayGranted.value = Settings.canDrawOverlays(this)
+        overlayGranted.value      = Settings.canDrawOverlays(this)
         notificationsGranted.value = checkNotificationsGranted()
-        mediaGranted.value = checkMediaGranted()
+        mediaGranted.value        = checkMediaGranted()
         accessibilityEnabled.value = checkAccessibilityEnabled()
 
         if (overlayGranted.value && notificationsGranted.value) {
             startForegroundService(Intent(this, ScreenUnlockService::class.java))
         }
 
-        val cardState = cardScreenState.value
-        val shouldLock = !hasAnsweredCard.value && (
-            (showSettings.value && deckSelected.value) ||
+        val cardState = vm.cardScreenState.value
+        val shouldLock = !vm.hasAnsweredCard.value && (
+            vm.isMidSession() ||
+            (vm.showSettings.value && vm.deckSelected.value) ||
             cardState is CardScreenState.ShowingFront ||
             cardState is CardScreenState.ShowingBack
         )
-        applyLock(shouldLock)
+        vm.applyLock(shouldLock)
 
-        if (!deckSelected.value || showSettings.value || noDueMode.value) {
+        if (!vm.deckSelected.value || vm.showSettings.value || vm.noDueMode.value) {
             if (AnkiRepository.hasPermission(this)) {
-                if (deckPickerState.value !is DeckPickerState.Ready) loadDecks()
+                if (vm.deckPickerState.value !is DeckPickerState.Ready) vm.loadDecks()
             } else {
-                deckPickerState.value = DeckPickerState.PermissionNeeded
+                vm.setAnkiPermissionNeeded()
             }
-        } else if (cardScreenState.value is CardScreenState.Loading) {
-            fetchCard()
+        } else if (vm.cardScreenState.value is CardScreenState.Loading) {
+            vm.fetchCard()
         }
     }
 
-    private fun loadDecks() {
-        decksJob?.cancel()
-        deckPickerState.value = DeckPickerState.Loading
-        decksJob = lifecycleScope.launch(Dispatchers.IO) {
-            val decks = AnkiRepository.fetchDecks(this@MainActivity)
-            withContext(Dispatchers.Main) {
-                deckPickerState.value = DeckPickerState.Ready(decks)
-            }
-        }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val isNewSession = intent.getBooleanExtra(EXTRA_FROM_UNLOCK, false) ||
+            intent.getBooleanExtra(EXTRA_FROM_WEB, false)
+        if (isNewSession) vm.startNewSession()
     }
 
-    private fun fetchCard() {
-        fetchJob?.cancel()
-        cardScreenState.value = CardScreenState.Loading
-        val deckId = getSavedDeckId()
-        fetchJob = lifecycleScope.launch(Dispatchers.IO) {
-            val result = AnkiRepository.fetchDueCard(this@MainActivity, deckId)
-            withContext(Dispatchers.Main) {
-                cardScreenState.value = when (result) {
-                    is CardFetchResult.NoDue -> {
-                        applyLock(false)
-                        noDueMode.value = true
-                        loadDecks()
-                        CardScreenState.Loading
-                    }
-                    is CardFetchResult.Error -> { applyLock(false); CardScreenState.Error }
-                    is CardFetchResult.NotInstalled -> { applyLock(false); CardScreenState.AnkiNotInstalled }
-                    is CardFetchResult.PermissionDenied -> { applyLock(false); CardScreenState.PermissionDenied }
-                    is CardFetchResult.Success -> {
-                        if (!hasAnsweredCard.value) applyLock(true)
-                        CardScreenState.ShowingFront(result.card, SystemClock.elapsedRealtime())
-                    }
-                }
-            }
-        }
-    }
-
-    private fun applyLock(locked: Boolean) {
-        AnkiGatekeeperAccessibilityService.isLocked = locked
-    }
-
-    private fun onCardAnswered() {
-        hasAnsweredCard.value = true
-        applyLock(false)
-        cardScreenState.value = CardScreenState.Loading
-        fetchCard()
-    }
-
-    private fun endSession() {
-        applyLock(false)
-        finish()
-    }
-
-    private fun hasDeckSelection(): Boolean = getPreferences(MODE_PRIVATE).contains("deck_id")
-    private fun getSavedDeckId(): Long = getPreferences(MODE_PRIVATE).getLong("deck_id", 0L)
-    private fun saveDeckSelection(deckId: Long) {
-        getPreferences(MODE_PRIVATE).edit().putLong("deck_id", deckId).apply()
-    }
-
-    private fun checkNotificationsGranted(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+    private fun checkNotificationsGranted(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-    }
 
-    private fun checkMediaGranted(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    private fun checkMediaGranted(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             android.os.Environment.isExternalStorageManager()
         } else {
             checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
-    }
 
     private fun requestNotifications() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -325,29 +218,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openOverlaySettings() {
-        startActivity(
-            Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.fromParts("package", packageName, null),
-            )
-        )
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        val isNewSession = intent.getBooleanExtra(EXTRA_FROM_UNLOCK, false) ||
-            intent.getBooleanExtra(EXTRA_FROM_WEB, false)
-        if (isNewSession) {
-            hasAnsweredCard.value = false
-            noDueMode.value = false
-            showSettings.value = false
-            cardScreenState.value = CardScreenState.Loading
-        }
+        startActivity(Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.fromParts("package", packageName, null),
+        ))
     }
 
     companion object {
         const val EXTRA_FROM_UNLOCK = "from_unlock"
-        const val EXTRA_FROM_WEB = "from_web"
+        const val EXTRA_FROM_WEB   = "from_web"
     }
 }
 

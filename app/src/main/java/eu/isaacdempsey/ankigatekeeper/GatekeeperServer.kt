@@ -5,6 +5,7 @@ import android.content.Intent
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
+import java.io.OutputStream
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -19,7 +20,7 @@ class GatekeeperServer(private val context: Context) {
         try {
             val socket = ServerSocket().apply {
                 reuseAddress = true
-                bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT), 1)
+                bind(InetSocketAddress(InetAddress.getLoopbackAddress(), PORT), 1)
             }.also { serverSocket = it }
 
             executor.execute {
@@ -36,7 +37,7 @@ class GatekeeperServer(private val context: Context) {
                                 val requestLine = reader.readLine()
                                 if (requestLine != null) {
                                     val parts = requestLine.split(" ")
-                                    if (parts.size >= 2) requestPath = parts[1]
+                                    if (parts.size >= 2) requestPath = parts[1].substringBefore('?')
                                 }
 
                                 while (true) {
@@ -45,45 +46,50 @@ class GatekeeperServer(private val context: Context) {
                                 }
                             } catch (_: IOException) { }
 
-                            if (requestPath == "/it-gets-easier.gif") {
-                                context.assets.open("it-gets-easier.gif").use { stream ->
-                                    val body = stream.readBytes()
-                                    val header = "HTTP/1.1 200 OK\r\n" +
-                                        "Content-Type: image/gif\r\n" +
-                                        "Content-Length: ${body.size}\r\n" +
-                                        "Connection: close\r\n\r\n"
+                            when (requestPath) {
+                                "/watchman.jpg" -> serveAsset(client.getOutputStream(), "watchman.jpg", "image/jpeg")
+                                "/icon.png", "/favicon.ico" -> serveAsset(client.getOutputStream(), "icon.png", "image/png")
+                                else -> {
                                     client.getOutputStream().apply {
-                                        write(header.toByteArray())
-                                        write(body)
+                                        write(httpHeader("text/html; charset=utf-8", RESPONSE_HTML_BYTES.size).toByteArray())
+                                        write(RESPONSE_HTML_BYTES)
                                         flush()
                                     }
+                                    context.startActivity(
+                                        Intent(context, MainActivity::class.java).apply {
+                                            addFlags(
+                                                Intent.FLAG_ACTIVITY_NEW_TASK or
+                                                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                            )
+                                            putExtra(MainActivity.EXTRA_FROM_WEB, true)
+                                        }
+                                    )
                                 }
-                            } else {
-                                val body = RESPONSE_HTML.toByteArray(Charsets.UTF_8)
-                                val header = "HTTP/1.1 200 OK\r\n" +
-                                    "Content-Type: text/html; charset=utf-8\r\n" +
-                                    "Content-Length: ${body.size}\r\n" +
-                                    "Connection: close\r\n\r\n"
-                                client.getOutputStream().apply {
-                                    write(header.toByteArray())
-                                    write(body)
-                                    flush()
-                                }
-                                context.startActivity(
-                                    Intent(context, MainActivity::class.java).apply {
-                                        addFlags(
-                                            Intent.FLAG_ACTIVITY_NEW_TASK or
-                                                Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                        )
-                                        putExtra(MainActivity.EXTRA_FROM_WEB, true)
-                                    }
-                                )
                             }
                         }
                     } catch (_: IOException) { }
                 }
             }
         } catch (_: IOException) { }
+    }
+
+    private fun httpHeader(contentType: String, bodyLen: Int, status: String = "200 OK") =
+        "HTTP/1.1 $status\r\nContent-Type: $contentType\r\nContent-Length: $bodyLen\r\nConnection: close\r\n\r\n"
+
+    private fun serveAsset(out: OutputStream, assetName: String, contentType: String) {
+        try {
+            context.assets.open(assetName).use { stream ->
+                val body = stream.readBytes()
+                out.write(httpHeader(contentType, body.size).toByteArray())
+                out.write(body)
+                out.flush()
+            }
+        } catch (_: IOException) {
+            val body = "404 Not Found".toByteArray()
+            out.write(httpHeader("text/plain", body.size, "404 Not Found").toByteArray())
+            out.write(body)
+            out.flush()
+        }
     }
 
     fun stop() {
@@ -101,22 +107,42 @@ class GatekeeperServer(private val context: Context) {
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
               <title>Anki Gatekeeper</title>
+              <link rel="icon" href="/icon.png" type="image/png">
               <style>
                 * { box-sizing: border-box; margin: 0; padding: 0; }
                 body {
-                  background: #000;
+                  background: #ede4cf;
                   display: flex;
+                  flex-direction: column;
                   justify-content: center;
                   align-items: center;
                   min-height: 100vh;
+                  padding: 2rem;
+                  font-family: Georgia, 'Times New Roman', serif;
                 }
-                img { max-width: 100%; max-height: 100vh; display: block; }
+                img {
+                  max-width: min(420px, 100%);
+                  height: auto;
+                  display: block;
+                }
+                blockquote {
+                  max-width: 420px;
+                  margin-top: 1.5rem;
+                  font-size: 1.1rem;
+                  line-height: 1.6;
+                  color: #3b2f1e;
+                  text-align: center;
+                  font-style: italic;
+                }
               </style>
             </head>
             <body>
-              <img src="/it-gets-easier.gif" alt="">
+              <img src="/watchman.jpg" alt="A night watchman">
+              <blockquote>&#8216;Tis my job to ask question after nightfall. There&#8217;s talk of strange folk abroad. Can&#8217;t be too careful.</blockquote>
             </body>
             </html>
         """.trimIndent()
+
+        private val RESPONSE_HTML_BYTES = RESPONSE_HTML.toByteArray(Charsets.UTF_8)
     }
 }
