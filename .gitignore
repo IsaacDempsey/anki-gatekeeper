@@ -1,0 +1,21 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+app/build/
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+app/release/
+
+# Signing keys
+*.jks
+*.keystore
+
+# Claude
+CLAUDE.md
+MEMORY.md
+.claude/
