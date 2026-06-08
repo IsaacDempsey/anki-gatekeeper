@@ -1,6 +1,6 @@
 # AnkiGatekeeper
 
-A Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone. Also integrates with Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to gate distracting websites behind a card review.
+An Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone. Also integrates with Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to gate distracting websites behind a card review.
 
 ### LeechBlock integration
 
