@@ -1,10 +1,13 @@
-# AnkiGatekeeper
-
-An Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone.
-
-### LeechBlock integration
-
-AnkiGatekeeper also runs a minimal HTTP server on `127.0.0.1:8765`. This can be used by Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to trigger a card review whenever the user attempts to access a distracting website. To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
+<div align="center">
+	<img
+		width="150"
+		height="150"
+		alt="icon"
+		src="https://github.com/user-attachments/assets/fe424732-5508-44e8-9535-ae4c68899d65"
+	/>
+	<h1>AnkiGatekeeper</h1>
+	<p>An android app that displays an undismissable Anki flashcard on phone unlock.</p>
+</div>
 
 ## Requirements
 
@@ -13,18 +16,22 @@ AnkiGatekeeper also runs a minimal HTTP server on `127.0.0.1:8765`. This can be 
 
 ## Installation
 
-1. Download the latest `anki-gatekeeper-*.apk` from [Releases](../../releases) on your mobile phone.
-2. On your Android device, open the downloaded file. If prompted, allow your browser or file manager to install unknown apps — this is a one-time permission for sideloaded APKs.
-3. Tap **Install**.
-4. Launch AnkiGatekeeper and follow the on-screen prompts:
+1. Download the latest `anki-gatekeeper-*.apk` from [Releases](../../releases) on your Android.
+2. Open the downloaded file and click install.
+   - If prompted, allow your browser or file manager to install unknown apps — this is a one-time permission for sideloaded APKs.
+5. Launch AnkiGatekeeper and follow the on-screen prompts:
    - **Display over other apps** — required to launch over the lock screen
    - **Notifications** — required to keep the background service running
    - **All files access** — required to load card images and audio
    - **Accessibility service** — required to keep the card screen in the foreground; find AnkiGatekeeper in Settings → Accessibility and enable it
    - **Deck selection** — pick which AnkiDroid deck to draw cards from (can be changed later via the gear icon)
-5. Done. Lock the screen and unlock to see your first card.
+6. Done. Lock the screen and unlock to see your first card.
 
 > **Note:** It is better if AnkiDroid is installed from F-Droid or a direct APK (not the Play Store) — see [Media / Images](#media--images) below for why.
+
+### LeechBlock integration
+
+AnkiGatekeeper also runs a minimal HTTP server on `127.0.0.1:8765`. This can be used by Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to trigger a card review whenever the user attempts to access a distracting website. To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
 
 ## Building from source
 
