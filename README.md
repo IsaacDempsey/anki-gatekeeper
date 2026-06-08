@@ -22,17 +22,26 @@ To set it up, open LeechBlock's options for a block set and enter `http://127.0.
 - Android 8.0+ (API 26)
 - [AnkiDroid](https://f-droid.org/en/packages/com.ichi2.anki/) installed from F-Droid or via direct APK (see [Media / Images](#media--images) below)
 
-## Setup
+## Installation
 
-1. Open the project in Android Studio and sync Gradle.
-2. Build and install on your device (`Run` or `adb install`).
-3. Launch the app and follow the on-screen prompts:
+1. Go to the [Releases](../../releases) page and download the latest `anki-gatekeeper-*.apk`.
+2. On your Android device, open the downloaded file. If prompted, allow your browser or file manager to install unknown apps — this is a one-time permission for sideloaded APKs.
+3. Tap **Install**.
+4. Launch AnkiGatekeeper and follow the on-screen prompts:
    - **Display over other apps** — required to launch over the lock screen
    - **Notifications** — required to keep the background service running
    - **All files access** — required to load card images and audio
    - **Accessibility service** — required to keep the card screen in the foreground; find AnkiGatekeeper in Settings → Accessibility and enable it
    - **Deck selection** — pick which AnkiDroid deck to draw cards from (can be changed later via the gear icon)
-4. Done. Lock the screen and unlock to see your first card.
+5. Done. Lock the screen and unlock to see your first card.
+
+> **Note:** Make sure AnkiDroid is installed from F-Droid or a direct APK (not the Play Store) — see [Media / Images](#media--images) below for why.
+
+## Building from source
+
+1. Open the project in Android Studio and sync Gradle.
+2. Build and install on your device (`Run` or `adb install`).
+3. Launch the app and follow the on-screen setup prompts.
 
 ## Architecture
 
