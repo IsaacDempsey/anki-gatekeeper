@@ -2,18 +2,9 @@
 
 A Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone. Also integrates with Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to gate distracting websites behind a card review.
 
-## How it works
-
-1. A foreground service (`ScreenUnlockService`) listens for `ACTION_USER_PRESENT` (keyguard dismissed).
-2. When the screen unlocks, the service launches `MainActivity`, which fetches the next due card from AnkiDroid via ContentProvider.
-3. The accessibility service (`AnkiGatekeeperAccessibilityService`) monitors window changes and brings the app back to the foreground if the user tries to navigate away.
-4. You answer the card — Again / Hard / Good / Easy — the rating is submitted to AnkiDroid's scheduler and the lock is released, returning you to whatever was on screen before.
-5. After answering the first card the lock is released for the rest of the session, and an Exit button appears so you can leave at any time.
-6. If no cards are due, the gate is skipped instantly.
-
 ### LeechBlock integration
 
-`ScreenUnlockService` also runs a minimal HTTP server on `127.0.0.1:8765`. When LeechBlock redirects a blocked site to `http://127.0.0.1:8765`, the server returns a holding page — a night watchman illustration with a suitably stern message — and simultaneously launches the card gate. After answering, the lock is released and Firefox returns to the (now redirected) tab.
+AnkiGatekeeper also runs a minimal HTTP server on `127.0.0.1:8765`. When LeechBlock redirects a blocked site to `http://127.0.0.1:8765`, the server returns a holding page — a night watchman illustration with a suitably stern message — and simultaneously launches the card gate. After answering, the lock is released and Firefox returns to the (now redirected) tab.
 
 To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
 
@@ -42,6 +33,15 @@ To set it up, open LeechBlock's options for a block set and enter `http://127.0.
 1. Open the project in Android Studio and sync Gradle.
 2. Build and install on your device (`Run` or `adb install`).
 3. Launch the app and follow the on-screen setup prompts.
+
+## How it works
+
+1. A foreground service (`ScreenUnlockService`) listens for `ACTION_USER_PRESENT` (keyguard dismissed).
+2. When the screen unlocks, the service launches `MainActivity`, which fetches the next due card from AnkiDroid via ContentProvider.
+3. The accessibility service (`AnkiGatekeeperAccessibilityService`) monitors window changes and brings the app back to the foreground if the user tries to navigate away.
+4. You answer the card — Again / Hard / Good / Easy — the rating is submitted to AnkiDroid's scheduler and the lock is released, returning you to whatever was on screen before.
+5. After answering the first card the lock is released for the rest of the session, and an Exit button appears so you can leave at any time.
+6. If no cards are due, the gate is skipped instantly.
 
 ## Architecture
 
@@ -86,7 +86,3 @@ To make media work, install AnkiDroid from **F-Droid** or via a **direct APK ins
 ```
 
 which this AnkiGatekeeper can read. See [AnkiDroid: Full Storage Access](https://github.com/ankidroid/Anki-Android/wiki/Full-Storage-Access) for details.
-
-## TODO
-
-- **Full audio reimplementation** — currently, audio is handled by injecting an `autoplay` attribute on the first `<audio>` element in the answer HTML. AnkiDroid's own player uses a native `MediaPlayer` managed outside the WebView: it extracts all `[sound:...]` tags during rendering and plays them sequentially, requests Android audio focus, and optionally replays question audio when the answer is revealed. A proper reimplementation would match this behaviour.
