@@ -1,10 +1,10 @@
 # AnkiGatekeeper
 
-An Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone. Also integrates with Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to gate distracting websites behind a card review.
+An Android app that intercepts every phone unlock and requires answering one Anki flashcard before granting access to the rest of the phone. Also integrates with 
 
 ### LeechBlock integration
 
-AnkiGatekeeper also runs a minimal HTTP server on `127.0.0.1:8765`. When LeechBlock redirects a blocked site to `http://127.0.0.1:8765`, the server returns a holding page and simultaneously launches the card gate. To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
+AnkiGatekeeper also runs a minimal HTTP server on `127.0.0.1:8765`. This can be used by Firefox's [LeechBlock](https://www.proginosko.com/leechblock/) extension to trigger a card review whenever the user attempts to access a distracting website. To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
 
 ## Requirements
 
