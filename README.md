@@ -1,13 +1,8 @@
-<div align="center">
-	<img
-		width="150"
-		height="150"
-		alt="icon"
-		src="https://github.com/user-attachments/assets/fe424732-5508-44e8-9535-ae4c68899d65"
-	/>
-	<h1>AnkiGatekeeper</h1>
-	<p>An android app that displays an undismissable Anki flashcard on phone unlock.</p>
-</div>
+<img width="150" alt="AnkiGatekeeper icon" src="https://github.com/user-attachments/assets/fe424732-5508-44e8-9535-ae4c68899d65"/>
+
+# AnkiGatekeeper
+
+An Android app that displays an undismissable Anki flashcard on phone unlock.
 
 ## Requirements
 
