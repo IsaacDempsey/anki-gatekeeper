@@ -4,9 +4,7 @@ A Android app that intercepts every phone unlock and requires answering one Anki
 
 ### LeechBlock integration
 
-AnkiGatekeeper also runs a minimal HTTP server on `127.0.0.1:8765`. When LeechBlock redirects a blocked site to `http://127.0.0.1:8765`, the server returns a holding page — a night watchman illustration with a suitably stern message — and simultaneously launches the card gate. After answering, the lock is released and Firefox returns to the (now redirected) tab.
-
-To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
+AnkiGatekeeper also runs a minimal HTTP server on `127.0.0.1:8765`. When LeechBlock redirects a blocked site to `http://127.0.0.1:8765`, the server returns a holding page and simultaneously launches the card gate. To set it up, open LeechBlock's options for a block set and enter `http://127.0.0.1:8765` as the redirect URL.
 
 ## Requirements
 
@@ -15,7 +13,7 @@ To set it up, open LeechBlock's options for a block set and enter `http://127.0.
 
 ## Installation
 
-1. Go to the [Releases](../../releases) page and download the latest `anki-gatekeeper-*.apk`.
+1. Download the latest `anki-gatekeeper-*.apk` from [Releases](../../releases) on your mobile phone.
 2. On your Android device, open the downloaded file. If prompted, allow your browser or file manager to install unknown apps — this is a one-time permission for sideloaded APKs.
 3. Tap **Install**.
 4. Launch AnkiGatekeeper and follow the on-screen prompts:
@@ -26,7 +24,7 @@ To set it up, open LeechBlock's options for a block set and enter `http://127.0.
    - **Deck selection** — pick which AnkiDroid deck to draw cards from (can be changed later via the gear icon)
 5. Done. Lock the screen and unlock to see your first card.
 
-> **Note:** Make sure AnkiDroid is installed from F-Droid or a direct APK (not the Play Store) — see [Media / Images](#media--images) below for why.
+> **Note:** It is better if AnkiDroid is installed from F-Droid or a direct APK (not the Play Store) — see [Media / Images](#media--images) below for why.
 
 ## Building from source
 
